@@ -176,6 +176,14 @@ sleep_some:
 ret
 
 
+; Bilddaten für die Katze.
+; Die Daten sind Run-Length-Encoded. Das niederwertige Nibble gibt den Farbwert
+; an, das höherwertige die Anzahl der zu setzenden Pixel (eigentlich Zeichen).
+; Ist das höherwertige Nibble 0, dann wird als Anzahl der Wert des
+; niederwertigen Nibbles plus 46 verwendet, für die sich ergebende Anzahl von
+; Pixeln wird keine Farbe gesetzt. Die Startposition befindet sich in Zeile 2
+; oder 3 (je nachdem), in Spalte 53 (beides nullbasiert).
+; Terminiert werden die Bilddaten durch ein 0xFF-Byte.
 pic:
 db 0xF1, 0x31, 0x0F
 db 0x11, 0xF2, 0x32, 0x11, 0x0D
@@ -196,33 +204,35 @@ db 0x11, 0x32, 0x93, 0x11, 0x35, 0x71, 0x25, 0x11, 0x07
 db 0x21, 0xC2, 0x11, 0xA5, 0x11, 0x08
 db 0x11, 0x15, 0xF1, 0x81, 0x09
 db 0x11, 0x25, 0x11, 0x10, 0x11, 0x25, 0x11, 0x70, 0x11, 0x25, 0x11, 0x10, 0x11, 0x25, 0x11, 0x09
-db 0x31, 0x30, 0x31, 0x80, 0x31, 0x20, 0x31, 0xFF
-pic_end:
+db 0x31, 0x30, 0x31, 0x80, 0x31, 0x20
 
 ; Der erste Eintrag ist eh ungenutzt, deshalb können wir da auch einfach
 ; Bilddaten mit drin haben
-pitches = $ - 2
-dw 3829, 3614, 3220, 2869, 2412, 2149, 2028, 1915, 1807, 1610, 1434
+pitches:
+db 0x31, 0xFF
 
 
+; Tonhöhen für die Noten
+; Werte sind 1193180 / Frequenz (ob der PIT nun 1193180 oder 1193182 Hz hat, wurscht)
+dw 3835, 3620, 3224, 2873, 2415, 2152, 2032, 1918, 1810, 1612, 1437
+;  dis'  e'    fis'  gis'  h'    cis'' d''   dis'' e''   fis'' gis''
+
+
+; Werte für die VGA-Palette. Jeder Wert besteht aus zwei Byte: Das erste gibt
+; den Palettenindex an, das zweite den Farbwert im Format BRG (blau-rot-grün)
+; 2:3:3. Die VGA-Palettenindizes 0 bis 5 sowie 7 entsprechen den gleichen
+; CGA-Indizes, 20 ist der CGA-Index 6, und 56 bis 63 entsprechen den Indizes
+; 8 bis 15 (63 bzw. 15 ist weiß und wird auch als solches verwendet).
 palette:
 ;  BG-Blau      schwarz      Kuchen       Zuckerguss   Stückchen    Fell         Wangen        Rot           Orange        Gelb          Grün          Blau          Violett
 db 0,01000001b, 1,00000000b, 2,10111101b, 3,11111100b, 4,10111001b, 5,10100100b, 20,10111100b, 56,00111000b, 57,00111100b, 58,00111111b, 59,00000111b, 60,11000100b, 61,11010001b
 
 
-gis2 = 11
-fis2 = 10
-e2   =  9
-dis2 =  8
-d2   =  7
-cis2 =  6
-b1   =  5
-gis1 =  4
-fis1 =  3
-e1   =  2
-dis1 =  1
-r    =  0
-
+; Zwei Noten sind in einem Byte, zuerst wird das höherwertige Nibble abgespielt,
+; dann das niederwertige. Die Werte sind Indizes für das pitches-Array, 0
+; bedeutet Stille.
+; Zuerst werden die ersten 32 Noten (16 Byte) viermal hintereinander abgespielt,
+; dann die letzten, dann wieder die ersten, usw. usf.
 sound:
 db 0xAA, 0xBB, 0x88, 0x05, 0x76, 0x50, 0x55, 0x66
 db 0x77, 0x76, 0x56, 0x8A, 0xB8, 0xA6, 0x85, 0x65
