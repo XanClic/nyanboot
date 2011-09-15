@@ -4,29 +4,84 @@ org 0x7C00
 
 jmp 0x0000:_start
 
-rainbow_offset db 0
+; word
+rainbow_offset = 0x8000
 
 _start:
 
 push    cs
 pop     ds
 
+xor     ax,ax
+mov     ds,ax
+mov     es,ax
+
+mov     ax,0x0201
+mov     bx,0x7E00
+mov     cx,0x0002
+xor     dh,dh
+int     0x13
+
 push    word 0xB800
 pop     es
 
 mov     si,palette
-mov     cx,14
+mov     cx,13
 palette_loop:
 mov     dx,0x3C8
 outsb
 inc     dx
-outsb
-outsb
-outsb
+lodsb
+out     dx,al
+rol     al,3
+out     dx,al
+shl     al,3
+out     dx,al
 loop    palette_loop
 
 
 pinkie_pie:
+mov     ax,[rainbow_offset]
+test    al,0x07
+jnz     do_not_change_that_tone
+
+shr     ah,2
+and     ax,0x1F8
+shr     ax,4
+pushf
+mov     si,sound
+add     si,ax
+
+mov     al,0xB6
+out     0x43,al
+lodsb
+popf
+jc      take_lower_of_sound
+shr     al,4
+take_lower_of_sound:
+and     al,0xF
+mov     si,pitches
+add     si,ax
+add     si,ax
+lodsw
+test    ax,ax
+push    ax
+in      al,0x61
+jz      switch_off
+or      al,0x03
+jmp     left_on
+switch_off:
+and     al,0xFC
+left_on:
+out     0x61,al
+pop     ax
+out     0x42,al
+mov     al,ah
+out     0x42,al
+
+do_not_change_that_tone:
+
+
 xor     di,di
 mov     ax,0x00DB
 mov     cx,2000
@@ -37,7 +92,7 @@ mov     ah,0xDB
 
 xor     ch,ch
 
-mov     dl,[rainbow_offset]
+mov     dl,byte [rainbow_offset]
 mov     si,479
 
 mov     bp,53
@@ -67,16 +122,18 @@ inc     dl
 dec     bp
 jnz     draw_rainbow
 
-inc     byte [rainbow_offset]
-
-call    draw_pic
-
-call    sleep_some
-jmp     pinkie_pie
+mov     dx,[rainbow_offset]
+inc     dx
+mov     [rainbow_offset],dx
 
 
-draw_pic:
+shr     dl,5
 mov     di,427
+jnc     cat_stays_up_here
+add     di,160
+cat_stays_up_here:
+
+
 mov     si,pic
 draw_pic_repeat:
 lodsb
@@ -95,7 +152,14 @@ jz      draw_pic_transp
 rep     stosw
 jmp     draw_pic_repeat
 draw_pic_quit:
-ret
+
+
+mov     ah,0x86
+mov     dx,0x4000
+xor     cx,cx
+int     0x15
+jmp     pinkie_pie
+
 
 draw_pic_transp:
 add     di,cx
@@ -103,16 +167,8 @@ add     di,cx
 jmp     draw_pic_repeat
 
 sleep_some:
-mov     ah,0x86
-mov     dx,0x4000
-xor     cx,cx
-int     0x15
 ret
 
-
-palette:
-;  bg blue     black     cream?       frosting     pieces of stuff  cat fur      cat cheeks    white        red         orange       yellow       green       blue         violet
-db 0,0,13,25,  1,0,0,0,  2,63,50,38,  3,63,38,63,  4,63,13,38,      5,38,38,38,  20,63,38,38,  7,63,63,63,  56,63,0,0,  57,63,38,0,  58,63,63,0,  59,0,63,0,  60,0,38,63,  61,25,13,63
 
 pic:
 db 0xF1, 0x31, 0xFF, 61
@@ -126,7 +182,7 @@ db 0x11, 0x12, 0x63, 0x14, 0x43, 0x11, 0x35, 0x11, 0x23, 0x12, 0x21, 0x35, 0x11,
 db 0x11, 0x12, 0xB3, 0x11, 0x45, 0x41, 0x45, 0x11, 0xFF, 53
 db 0x11, 0x12, 0x33, 0x14, 0x73, 0x11, 0xC5, 0x11, 0xFF, 52
 db 0x21, 0x12, 0x73, 0x14, 0x23, 0x11, 0xE5, 0x11, 0xFF, 48
-db 0x51, 0x12, 0x13, 0x14, 0x83, 0x11, 0x35, 0x17, 0x11, 0x55, 0x17, 0x11, 0x25, 0x11, 0xFF, 46
+db 0x51, 0x12, 0x13, 0x14, 0x83, 0x11, 0x35, 0x1F, 0x11, 0x55, 0x1F, 0x11, 0x25, 0x11, 0xFF, 46
 db 0x21, 0x45, 0x11, 0x12, 0xA3, 0x11, 0x35, 0x21, 0x35, 0x11, 0x15, 0x21, 0x25, 0x11, 0xFF, 46
 db 0x11, 0x35, 0x31, 0x12, 0x53, 0x14, 0x43, 0x11, 0x15, 0x26, 0x95, 0x26, 0x11, 0xFF, 47
 db 0x41, 0x10, 0x11, 0x22, 0x13, 0x14, 0x73, 0x11, 0x15, 0x26, 0x15, 0x11, 0x25, 0x11, 0x25, 0x11, 0x15, 0x26, 0x11, 0xFF, 52
@@ -139,3 +195,30 @@ db 0x31, 0x30, 0x31, 0x80, 0x31, 0x20, 0x31
 times 510-($-$$) db 0
 
 dw 0xAA55
+
+palette:
+;  bg blue      black        cream?       frosting     pieces of stuff  cat fur      cat cheeks    red           orange        yellow        green         blue          violet
+db 0,01000001b, 1,00000000b, 2,10111101b, 3,11111100b, 4,10111001b,     5,10100100b, 20,10111100b, 56,00111000b, 57,00111100b, 58,00111111b, 59,00000111b, 60,11000100b, 61,11010001b
+
+pitches: dw 0, 3829, 3614, 3220, 2869, 2412, 2149, 2028, 1915, 1807, 1610, 1434
+
+gis2 = 11
+fis2 = 10
+e2   =  9
+dis2 =  8
+d2   =  7
+cis2 =  6
+b1   =  5
+gis1 =  4
+fis1 =  3
+e1   =  2
+dis1 =  1
+r    =  0
+
+sound:
+db 0xAA, 0xBB, 0x88, 0x05, 0x76, 0x50, 0x55, 0x66
+db 0x77, 0x76, 0x56, 0x8A, 0xB8, 0xA6, 0x85, 0x65
+db 0x55, 0x34, 0x55, 0x34, 0x56, 0x85, 0x98, 0x9A
+db 0x55, 0x55, 0x34, 0x53, 0x98, 0x65, 0x31, 0x23
+
+times 1024-($-$$) db 0
