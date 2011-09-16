@@ -131,7 +131,7 @@ jnz     draw_bow_line
 inc     ax
 loop    draw_bows
 
-inc     dl
+inc     dx
 dec     bp
 jnz     draw_rainbow
 
